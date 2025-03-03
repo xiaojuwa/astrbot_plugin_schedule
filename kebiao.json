@@ -1,0 +1,185 @@
+{
+  "weekdays": ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"],
+  "time_slots": [
+    {
+      "slot": "1-2",
+      "period": "上午",
+      "time": "08:00-09:40"
+    },
+    {
+      "slot": "3-4",
+      "period": "上午",
+      "time": "10:00-11:40"
+    },
+    {
+      "slot": "5-6",
+      "period": "下午",
+      "time": "14:00-15:40"
+    },
+    {
+      "slot": "7-8",
+      "period": "下午",
+      "time": "16:00-17:40"
+    },
+    {
+      "slot": "9-10",
+      "period": "晚上",
+      "time": "18:30-20:10"
+    },
+    {
+      "slot": "11",
+      "period": "晚上",
+      "time": "20:20-21:05"
+    }
+  ],
+  "courses": {
+    "星期一_1-2": [
+      {
+        "name": "酒店英语Ⅱ",
+        "weeks": "1-8",
+        "classroom": "BY101",
+        "teacher": "吴丽慧",
+        "day": "星期一",
+        "time_slot": "1-2"
+      }
+    ],
+    "星期一_3-4": [
+      {
+        "name": "财务管理",
+        "weeks": "1-16",
+        "classroom": "2309",
+        "teacher": "张家祥",
+        "day": "星期一",
+        "time_slot": "3-4"
+      }
+    ],
+    "星期一_5-6": [
+      {
+        "name": "大学外语Ⅳ",
+        "weeks": "1-16",
+        "classroom": "4106",
+        "teacher": "陈玉婷",
+        "day": "星期一",
+        "time_slot": "5-6"
+      }
+    ],
+    "星期一_9-10": [
+      {
+        "name": "形势与政策VI",
+        "weeks": "6",
+        "classroom": "BY420",
+        "teacher": "杜文娟",
+        "day": "星期一",
+        "time_slot": "9-10"
+      }
+    ],
+    "星期二_5-6": [
+      {
+        "name": "旅游目的地管理",
+        "weeks": "1-16",
+        "classroom": "BY507",
+        "teacher": "罗银川",
+        "day": "星期二",
+        "time_slot": "5-6"
+      }
+    ],
+    "星期三_1-2": [
+      {
+        "name": "酒店英语Ⅱ",
+        "weeks": "1-16",
+        "classroom": "BY201",
+        "teacher": "吴丽慧",
+        "day": "星期三",
+        "time_slot": "1-2"
+      }
+    ],
+    "星期三_5-6": [
+      {
+        "name": "财务管理",
+        "weeks": "9-16",
+        "classroom": "2308",
+        "teacher": "张家祥",
+        "day": "星期三",
+        "time_slot": "5-6"
+      }
+    ],
+    "星期三_7-8": [
+      {
+        "name": "市场营销",
+        "weeks": "1-16",
+        "classroom": "BY101",
+        "teacher": "夏华丽",
+        "day": "星期三",
+        "time_slot": "7-8"
+      }
+    ],
+    "星期四_1-2": [
+      {
+        "name": "旅游目的地管理",
+        "weeks": "1-8",
+        "classroom": "BY619",
+        "teacher": "罗银川",
+        "day": "星期四",
+        "time_slot": "1-2"
+      },
+      {
+        "name": "招聘与人员测评",
+        "weeks": "9-16",
+        "classroom": "C1自我认知实训室",
+        "teacher": "王忠诚",
+        "day": "星期四",
+        "time_slot": "1-2"
+      }
+    ],
+    "星期四_3-4": [
+      {
+        "name": "会计学",
+        "weeks": "1-8",
+        "classroom": "BY108",
+        "teacher": "何源",
+        "day": "星期四",
+        "time_slot": "3-4"
+      }
+    ],
+    "星期五_1-2": [
+      {
+        "name": "会计学",
+        "weeks": "1-16",
+        "classroom": "BY414",
+        "teacher": "何源",
+        "day": "星期五",
+        "time_slot": "1-2"
+      }
+    ],
+    "星期五_3-4": [
+      {
+        "name": "招聘与人员测评",
+        "weeks": "1-16",
+        "classroom": "S5408财务管理实验室",
+        "teacher": "王忠诚",
+        "day": "星期五",
+        "time_slot": "3-4"
+      }
+    ],
+    "星期五_5-6": [
+      {
+        "name": "毕业论文写作",
+        "weeks": "1-16",
+        "classroom": "BY413",
+        "teacher": "李丽霞",
+        "day": "星期五",
+        "time_slot": "5-6"
+      }
+    ],
+    "星期五_7-8": [
+      {
+        "name": "酒店餐饮管理",
+        "weeks": "1-16",
+        "classroom": "2314",
+        "teacher": "宋富安",
+        "day": "星期五",
+        "time_slot": "7-8"
+      }
+    ]
+  }
+}

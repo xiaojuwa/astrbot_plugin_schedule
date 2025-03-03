@@ -1,0 +1,6 @@
+{
+    "enabled": true,
+    "targets": {
+        "gewechat:GroupMessage:48628993963@chatroom": true
+    }
+}
