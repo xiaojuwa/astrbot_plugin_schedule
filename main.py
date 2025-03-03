@@ -661,12 +661,14 @@ class SchedulePlugin(Star):
                                             html_template = self.get_notification_template(course, time_slot)
                                             url = await self.html_render(html_template, {})
                                             
-                                            chain = MessageChain()
-                                            chain.chain.extend([
-                                                Image(file=url)
-                                            ])
-                                            await self.context.send_message(target, chain)
-                                            logger.info(f"已成功发送课程提醒: {course['name']} 到 {target}")
+                                            logger.info(f"准备发送课程提醒: {course['name']} 到 {target}")
+                                            chain = MessageChain([Image(file=url)])
+                                            try:
+                                                await self.context.send_message(target, chain)
+                                                logger.info(f"已成功发送课程提醒: {course['name']} 到 {target}")
+                                            except Exception as e:
+                                                logger.error(f"发送课程提醒失败: {str(e)}")
+                                                continue
                                         except Exception as e:
                                             logger.error(f"发送课程提醒失败: {str(e)}")
                                     
