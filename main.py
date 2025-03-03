@@ -583,7 +583,7 @@ class SchedulePlugin(Star):
                 weekday_str = schedule_data["weekdays"][weekday]
                 
                 # 获取当前周次
-                term_start = datetime.datetime(2024, 2, 26)
+                term_start = datetime.datetime(2025, 2, 26)
                 days_passed = (now - term_start).days
                 current_week = days_passed // 7 + 1
                 logger.info(f"当前周次: 第{current_week}周, 星期{weekday_str}")
