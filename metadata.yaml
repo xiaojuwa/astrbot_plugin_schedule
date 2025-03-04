@@ -7,6 +7,6 @@ help: |
   输入 /课表 周一 查看下周一的课表（同理可查看周二到周日）
   输入 /开启课程提醒 开启课前1小时提醒功能
   输入 /关闭课程提醒 关闭课前提醒功能
-version: v1.0.1 # 插件版本号
+version: v1.0.2 # 插件版本号
 author: xiaojuwa # 作者
 repo: https://github.com/xiaojuwa/astrbot_plugin_schedule # 插件的仓库地址
