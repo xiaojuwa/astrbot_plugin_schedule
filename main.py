@@ -26,7 +26,7 @@ class_time_table = {
     "11": {"start": "20:20", "end": "21:05"}
 }
 
-@register("schedule", "xiaojuwa", "课表查询与提醒插件", "1.0.2", "https://github.com/xiaojuwa/astrbot_plugin_schedule")
+@register("schedule", "xiaojuwa", "课表查询与提醒插件", "1.0.3", "https://github.com/xiaojuwa/astrbot_plugin_schedule")
 class SchedulePlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -700,64 +700,57 @@ class SchedulePlugin(Star):
                 logger.error(f"堆栈信息: {traceback.format_exc()}")
                 await asyncio.sleep(60)  # 出错后等待1分钟再试
 
-async def send_message(target: str, message: str, retry_times: int = 3) -> bool:
-    """
-    发送消息，带重试机制
-    """
-    for i in range(retry_times):
-        try:
-            await bot.send_message(target, message)
-            logging.info(f"消息发送成功: {message}")
-            return True
-        except Exception as e:
-            logging.error(f"消息发送失败 (尝试 {i+1}/{retry_times}): {str(e)}")
-            if i < retry_times - 1:
-                await asyncio.sleep(1)  # 等待1秒后重试
-    return False
+    async def send_message(self, target: str, message: str, retry_times: int = 3) -> bool:
+        """
+        发送消息，带重试机制
+        """
+        for i in range(retry_times):
+            try:
+                await self.context.send_message(target, MessageChain([Plain(message)]))
+                logger.info(f"消息发送成功: {message}")
+                return True
+            except Exception as e:
+                logger.error(f"消息发送失败 (尝试 {i+1}/{retry_times}): {str(e)}")
+                if i < retry_times - 1:
+                    await asyncio.sleep(1)  # 等待1秒后重试
+        return False
 
-async def handle_course_reminder(course: dict, target: str) -> bool:
-    """
-    处理课程提醒
-    """
-    message = (
-        f"课程提醒:\n"
-        f"课程：{course['name']}\n"
-        f"教室：{course['classroom']}\n"
-        f"时间：{course['start_time']}\n"
-        f"距离上课还有{course['remind_minutes']}分钟"
-    )
-    
-    success = await send_message(target, message)
-    if success:
-        logging.info(f"已成功发送课程提醒: {course['name']} 到 {target}")
-    else:
-        logging.error(f"发送课程提醒失败: {course['name']} 到 {target}")
-    return success
-
-async def handle_test_push(message):
-    """
-    处理推送测试命令
-    """
-    if message.content == "/推送测试":
-        current_time = datetime.now()
-        test_time = current_time + timedelta(hours=1)
+    async def handle_test_push(self, event: AstrMessageEvent):
+        """
+        处理推送测试命令
+        """
+        current_time = datetime.datetime.now()
+        test_time = current_time + datetime.timedelta(hours=1)
         
         test_course = {
             "name": "测试课程",
             "classroom": "测试教室",
             "start_time": test_time.strftime("%H:%M"),
             "remind_minutes": 60,
-            "remind_time": (test_time - timedelta(minutes=5)).strftime("%H:%M:%S")
+            "remind_time": (test_time - datetime.timedelta(minutes=5)).strftime("%H:%M:%S")
         }
         
-        await handle_course_reminder(test_course, message.chat.id)
-        await send_message(
-            message.chat.id, 
-            "测试推送已触发，如果您收到了这条消息和上面的课程提醒，说明推送功能正常"
+        # 构建提醒消息
+        html_template = self.get_notification_template(
+            {"name": test_course["name"], "classroom": test_course["classroom"]},
+            {"period": "测试", "slot": "", "time": test_course["start_time"]}
         )
+        url = await self.html_render(html_template, {})
+        
+        try:
+            await self.context.send_message(
+                event.unified_msg_origin, 
+                MessageChain([Image(file=url)])
+            )
+            logger.info("测试推送发送成功")
+            await self.send_message(
+                event.unified_msg_origin,
+                "测试推送已触发，如果您收到了这条消息和上面的课程提醒，说明推送功能正常"
+            )
+        except Exception as e:
+            logger.error(f"测试推送发送失败: {str(e)}")
 
-# 在主要的消息处理函数中添加测试命令处理
-async def on_message(message):
-    if message.content == "/推送测试":
-        await handle_test_push(message)
-    // ... existing code ...
+    @filter.command("推送测试")
+    async def test_push_command(self, event: AstrMessageEvent):
+        """测试课程推送功能"""
+        await self.handle_test_push(event)
