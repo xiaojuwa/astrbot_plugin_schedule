@@ -7,6 +7,7 @@ import datetime
 import os
 import json
 import time
+from .scheduler import CourseScheduler
 
 # 定义全局变量来存储课表数据和通知设置
 schedule_data = {}
@@ -33,6 +34,10 @@ class SchedulePlugin(Star):
         self.data_file = os.path.join(os.path.dirname(__file__), "kebiao.json")
         self.load_schedule_data()
         self.load_notification_config()
+        self.scheduler = CourseScheduler(context, schedule_data, class_time_table)
+        self.scheduler.set_html_render(self.html_render)
+        self.scheduler.load_notification_config()
+        self.scheduler.start()
         asyncio.get_event_loop().create_task(self.notification_task())
     
     def load_schedule_data(self):
@@ -78,6 +83,127 @@ class SchedulePlugin(Star):
         except Exception as e:
             logger.error(f"保存通知配置失败: {str(e)}")
     
+    def get_notification_template(self, course_info, time_slot=None):
+        """生成课程提醒HTML模板"""
+        # 如果time_slot为None但course_info中包含time_slot，则使用course_info中的time_slot
+        if time_slot is None and 'time_slot' in course_info:
+            time_slot = course_info['time_slot']
+            
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8"/>
+            <style>
+                html, body {{
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    height: 100%;
+                    font-family: "Microsoft YaHei", sans-serif;
+                    background: linear-gradient(135deg, #fff9c4 0%, #ffee58 100%);
+                }}
+                body {{
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    padding: 0;
+                }}
+                .notification-container {{
+                    width: 100%;
+                    max-width: 100%;
+                    background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+                    border-radius: 15px;
+                    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                    padding: 20px;
+                    margin: 20px;
+                    text-align: center;
+                }}
+                .notification-header {{
+                    background-color: #ffeb3b;
+                    color: #333;
+                    padding: 15px;
+                    border-radius: 10px 10px 0 0;
+                    margin: -20px -20px 20px -20px;
+                }}
+                .notification-title {{
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin: 0;
+                }}
+                .notification-subtitle {{
+                    font-size: 16px;
+                    margin: 10px 0 0 0;
+                    color: #555;
+                }}
+                .course-info {{
+                    padding: 15px;
+                    background-color: #f9f9f9;
+                    border-radius: 10px;
+                    margin-bottom: 15px;
+                }}
+                .course-name {{
+                    font-size: 22px;
+                    font-weight: bold;
+                    color: #ff6f00;
+                    margin-bottom: 10px;
+                }}
+                .info-row {{
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 10px 0;
+                    padding: 8px 0;
+                    border-bottom: 1px dashed #ddd;
+                }}
+                .info-label {{
+                    font-weight: bold;
+                    color: #555;
+                }}
+                .info-value {{
+                    color: #333;
+                }}
+                .reminder-footer {{
+                    margin-top: 20px;
+                    font-size: 14px;
+                    color: #777;
+                    font-style: italic;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="notification-container">
+                <div class="notification-header">
+                    <h1 class="notification-title">课程提醒</h1>
+                    <p class="notification-subtitle">距离上课还有1小时</p>
+                </div>
+                <div class="course-info">
+                    <div class="course-name">{course_info['name']}</div>
+                    <div class="info-row">
+                        <span class="info-label">上课时间:</span>
+                        <span class="info-value">{course_info['course_date']} {course_info['start_time']}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">上课地点:</span>
+                        <span class="info-value">{course_info['classroom']}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">任课教师:</span>
+                        <span class="info-value">{course_info['teacher']}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">课程节次:</span>
+                        <span class="info-value">{time_slot['period']} {time_slot['slot']}节</span>
+                    </div>
+                </div>
+                <div class="reminder-footer">
+                    宝宝请提前做好上课准备哦！
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+    
     @filter.command("课表")
     async def show_schedule(self, event: AstrMessageEvent, day: str = None):
         '''查询课表，可选参数：今天、明天、周一到周日'''
@@ -109,7 +235,7 @@ class SchedulePlugin(Star):
         date_str = query_date.strftime("%Y年%m月%d日")
         
         # 获取当前周次（这里假设第一周的开始日期是2025年2月24日，可以根据实际情况调整）
-        term_start = datetime.datetime(2025, 2, 24)
+        term_start = datetime.datetime(2025, 2, 26)
         days_passed = (query_date - term_start).days
         current_week = days_passed // 7 + 1
         
@@ -419,133 +545,28 @@ class SchedulePlugin(Star):
                 return int(weeks_range) == current_week
         except:
             return False
-    
-
-    def get_notification_template(self, course, time_slot):
-        """生成课程提醒HTML模板"""
-        return f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8"/>
-            <style>
-                html, body {{
-                    margin: 0;
-                    padding: 0;
-                    width: 100%;
-                    height: 100%;
-                    font-family: "Microsoft YaHei", sans-serif;
-                    background: linear-gradient(135deg, #fff9c4 0%, #ffee58 100%);
-                }}
-                body {{
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    padding: 0;
-                }}
-                .notification-container {{
-                    width: 100%;
-                    max-width: 100%;
-                    background: linear-gradient(135deg, #fff9c4 0%, #ffee58 100%);
-                    border-radius: 15px;
-                    padding: 15px;
-                    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-                    box-sizing: border-box;
-                    margin: 0;
-                }}
-                .notification-header {{
-                    display: flex;
-                    align-items: center;
-                    margin-bottom: 15px;
-                    padding-bottom: 12px;
-                    border-bottom: 3px solid #fbc02d;
-                }}
-                .notification-icon {{
-                    font-size: 38px;
-                    margin-right: 12px;
-                }}
-                .notification-title {{
-                    font-size: 28px;
-                    font-weight: bold;
-                    color: #f57f17;
-                }}
-                .notification-content {{
-                    background-color: white;
-                    border-radius: 12px;
-                    padding: 15px;
-                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-                }}
-                .notification-message {{
-                    font-size: 22px;
-                    font-weight: bold;
-                    color: #f57f17;
-                    margin-bottom: 15px;
-                    text-align: center;
-                }}
-                .course-info {{
-                    background-color: #fff8e1;
-                    border-radius: 10px;
-                    padding: 15px;
-                    margin-bottom: 15px;
-                }}
-                .course-name {{
-                    font-size: 24px;
-                    font-weight: bold;
-                    color: #e65100;
-                    margin-bottom: 10px;
-                    text-align: center;
-                }}
-                .course-time, .course-location, .course-teacher {{
-                    font-size: 18px;
-                    color: #ff6f00;
-                    margin-bottom: 8px;
-                }}
-                .notification-footer {{
-                    text-align: center;
-                    font-size: 18px;
-                    font-style: italic;
-                    color: #f57f17;
-                    margin-top: 10px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="notification-container">
-                <div class="notification-header">
-                    <div class="notification-icon">⏰</div>
-                    <div class="notification-title">课程提醒</div>
-                </div>
-                <div class="notification-content">
-                    <div class="notification-message">你有一节课程将在1小时后开始</div>
-                    <div class="course-info">
-                        <div class="course-name">{course['name']}</div>
-                        <div class="course-time">{time_slot['period']}{time_slot['slot']}节 ({time_slot['time']})</div>
-                        <div class="course-location">📍 {course['classroom']}</div>
-                        <div class="course-teacher">👨‍🏫 {course['teacher']}</div>
-                    </div>
-                    <div class="notification-footer">请做好上课准备哦~</div>
-                </div>
-            </div>
-        </body>
-        </html>
-        '''
 
     @filter.command("开启课程提醒")
     async def enable_notification(self, event: AstrMessageEvent):
         '''开启课程提醒功能，将在每节课前1小时提醒'''
-        global notification_enabled, notification_targets
-        notification_enabled = True
-        notification_targets[event.unified_msg_origin] = True
-        self.save_notification_config()
+        self.scheduler.notification_enabled = True
+        self.scheduler.notification_targets[event.unified_msg_origin] = True
+        self.scheduler.save_notification_config()
+        
+        # 更新任务队列
+        self.scheduler.update_task_queue()
+        
+        # 唤醒调度器
+        self.scheduler.wakeup_event.set()
+        
         yield event.plain_result("课程提醒已开启，将在每节课前1小时提醒你")
     
     @filter.command("关闭课程提醒")
     async def disable_notification(self, event: AstrMessageEvent):
         '''关闭课程提醒功能'''
-        global notification_targets
-        if event.unified_msg_origin in notification_targets:
-            del notification_targets[event.unified_msg_origin]
-            self.save_notification_config()
+        if event.unified_msg_origin in self.scheduler.notification_targets:
+            del self.scheduler.notification_targets[event.unified_msg_origin]
+            self.scheduler.save_notification_config()
             yield event.plain_result("课程提醒已关闭")
         else:
             yield event.plain_result("你尚未开启课程提醒")
@@ -553,18 +574,159 @@ class SchedulePlugin(Star):
     @filter.command("通知状态")
     async def notification_status(self, event: AstrMessageEvent):
         '''查询当前通知功能的状态'''
-        global notification_enabled, notification_targets
-        
-        if notification_enabled:
-            target_count = len(notification_targets)
-            if event.unified_msg_origin in notification_targets:
+        if self.scheduler.notification_enabled:
+            target_count = len(self.scheduler.notification_targets)
+            if event.unified_msg_origin in self.scheduler.notification_targets:
                 yield event.plain_result(f"✅ 通知功能已开启\n当前共有 {target_count} 个用户接收通知\n你已开启课程提醒功能")
             else:
                 yield event.plain_result(f"✅ 通知功能已开启\n当前共有 {target_count} 个用户接收通知\n你尚未开启课程提醒功能，可以使用 /开启课程提醒 命令开启")
         else:
             yield event.plain_result("❌ 通知功能当前已关闭\n可以使用 /开启课程提醒 命令开启")
 
-    
+    @filter.command("推送测试")
+    async def test_push_command(self, event: AstrMessageEvent):
+        """测试课程推送功能"""
+        # 获取当前时间和日期信息
+        now = datetime.datetime.now()
+        weekday = now.weekday()
+        weekday_str = schedule_data["weekdays"][weekday]
+        
+        # 计算当前周次
+        term_start = datetime.datetime(2025, 2, 26)  # 学期开始日期
+        days_passed = (now - term_start).days
+        current_week = days_passed // 7 + 1
+        
+        logger.info(f"推送测试 - 当前时间: {now.strftime('%Y-%m-%d %H:%M:%S')}, 第{current_week}周, {weekday_str}")
+        
+        # 寻找最近的课程
+        nearest_course = None
+        nearest_time_diff = float('inf')
+        nearest_time_slot = None
+        nearest_course_date = None
+        
+        # 检查今天和明天的所有课程
+        for day_offset in range(2):  # 0=今天, 1=明天
+            target_date = now + datetime.timedelta(days=day_offset)
+            target_weekday = target_date.weekday()
+            target_weekday_str = schedule_data["weekdays"][target_weekday]
+            
+            # 计算目标日期的周次
+            target_days_passed = (target_date - term_start).days
+            target_week = target_days_passed // 7 + 1
+            
+            # 检查每个时间段是否有课程
+            for time_slot in schedule_data["time_slots"]:
+                slot = time_slot["slot"]
+                course_key = f"{target_weekday_str}_{slot}"
+                
+                if course_key in schedule_data["courses"]:
+                    for course in schedule_data["courses"][course_key]:
+                        # 检查当前周次是否在课程的周次范围内
+                        weeks_range = course["weeks"]
+                        if not self.is_course_in_week(weeks_range, target_week):
+                            continue
+                        
+                        # 计算课程开始时间
+                        start_time_str = class_time_table[slot]["start"]
+                        start_hour, start_minute = map(int, start_time_str.split(":"))
+                        
+                        # 课程开始时间
+                        course_start_time = target_date.replace(
+                            hour=start_hour, 
+                            minute=start_minute, 
+                            second=0, 
+                            microsecond=0
+                        )
+                        
+                        # 计算时间差（秒）
+                        time_diff = abs((course_start_time - now).total_seconds())
+                        
+                        # 如果这个课程比之前找到的更近，则更新
+                        if time_diff < nearest_time_diff:
+                            nearest_time_diff = time_diff
+                            nearest_course = course
+                            nearest_time_slot = time_slot
+                            nearest_course_date = target_date
+        
+        if nearest_course is None:
+            yield event.plain_result("未找到最近的课程，无法进行推送测试。请确保课表数据中包含了近期的课程。")
+            return
+        
+        # 创建课程信息
+        course_info = {
+            "name": nearest_course["name"],
+            "classroom": nearest_course["classroom"],
+            "teacher": nearest_course["teacher"],
+            "time_slot": nearest_time_slot,
+            "start_time": class_time_table[nearest_time_slot["slot"]]["start"],
+            "course_date": nearest_course_date.strftime("%Y-%m-%d")
+        }
+        
+        logger.info(f"找到最近的课程: {course_info['name']}, 教室: {course_info['classroom']}, 时间: {course_info['course_date']} {course_info['start_time']}")
+        
+        # 检查是否有订阅的目标
+        if not self.scheduler.notification_targets:
+            yield event.plain_result("当前没有任何群组或用户订阅课程提醒。请先使用 /开启课程提醒 命令订阅提醒。")
+            return
+        
+        # 构建提醒消息
+        html_template = self.get_notification_template(course_info)
+        url = await self.html_render(html_template, {})
+        
+        # 发送测试消息
+        success_count = 0
+        fail_count = 0
+        target_list = list(self.scheduler.notification_targets.keys())
+        
+        # 首先通知触发测试的用户
+        try:
+            await self.context.send_message(
+                event.unified_msg_origin, 
+                MessageChain([
+                    Plain(f"开始测试推送最近的课程 [{course_info['name']}] 到 {len(target_list)} 个订阅目标...")
+                ])
+            )
+        except Exception as e:
+            logger.error(f"发送测试开始通知失败: {str(e)}")
+        
+        # 向所有订阅的目标发送
+        for target in target_list:
+            try:
+                logger.info(f"向 {target} 推送测试消息")
+                
+                await self.context.send_message(
+                    target, 
+                    MessageChain([Image(file=url)])
+                )
+                
+                # 发送说明消息
+                await self.context.send_message(
+                    target,
+                    MessageChain([
+                        Plain(f"这是一条测试推送，由用户 {event.unified_msg_origin} 触发。\n")
+                    ])
+                )
+                
+                success_count += 1
+                logger.info(f"成功向 {target} 推送测试消息")
+            except Exception as e:
+                fail_count += 1
+                logger.error(f"向 {target} 推送测试消息失败: {str(e)}")
+        
+        # 向触发测试的用户发送结果
+        result_message = f"测试推送完成!\n成功: {success_count}/{len(target_list)}"
+        if fail_count > 0:
+            result_message += f"\n失败: {fail_count}/{len(target_list)}\n请查看日志了解详细信息"
+        
+        try:
+            await self.context.send_message(
+                event.unified_msg_origin,
+                MessageChain([Plain(result_message)])
+            )
+        except Exception as e:
+            logger.error(f"发送测试结果通知失败: {str(e)}")
+            yield event.plain_result(f"测试推送过程中发生错误: {str(e)}")
+
     async def notification_task(self):
         """定时任务，检查是否需要发送课程提醒"""
         global notification_enabled, notification_targets, schedule_data
@@ -658,7 +820,15 @@ class SchedulePlugin(Star):
                                     for target in notification_targets:
                                         try:
                                             # 构建提醒消息
-                                            html_template = self.get_notification_template(course, time_slot)
+                                            course_info = {
+                                                "name": course["name"],
+                                                "classroom": course["classroom"],
+                                                "teacher": course["teacher"],
+                                                "time_slot": time_slot,
+                                                "start_time": start_time_str,
+                                                "course_date": now.strftime("%Y-%m-%d")
+                                            }
+                                            html_template = self.get_notification_template(course_info, time_slot)
                                             url = await self.html_render(html_template, {})
                                             
                                             logger.info(f"准备发送课程提醒: {course['name']} 到 {target}")
@@ -714,43 +884,3 @@ class SchedulePlugin(Star):
                 if i < retry_times - 1:
                     await asyncio.sleep(1)  # 等待1秒后重试
         return False
-
-    async def handle_test_push(self, event: AstrMessageEvent):
-        """
-        处理推送测试命令
-        """
-        current_time = datetime.datetime.now()
-        test_time = current_time + datetime.timedelta(hours=1)
-        
-        test_course = {
-            "name": "测试课程",
-            "classroom": "测试教室",
-            "start_time": test_time.strftime("%H:%M"),
-            "remind_minutes": 60,
-            "remind_time": (test_time - datetime.timedelta(minutes=5)).strftime("%H:%M:%S")
-        }
-        
-        # 构建提醒消息
-        html_template = self.get_notification_template(
-            {"name": test_course["name"], "classroom": test_course["classroom"]},
-            {"period": "测试", "slot": "", "time": test_course["start_time"]}
-        )
-        url = await self.html_render(html_template, {})
-        
-        try:
-            await self.context.send_message(
-                event.unified_msg_origin, 
-                MessageChain([Image(file=url)])
-            )
-            logger.info("测试推送发送成功")
-            await self.send_message(
-                event.unified_msg_origin,
-                "测试推送已触发，如果您收到了这条消息和上面的课程提醒，说明推送功能正常"
-            )
-        except Exception as e:
-            logger.error(f"测试推送发送失败: {str(e)}")
-
-    @filter.command("推送测试")
-    async def test_push_command(self, event: AstrMessageEvent):
-        """测试课程推送功能"""
-        await self.handle_test_push(event)
